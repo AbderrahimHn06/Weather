@@ -5,13 +5,18 @@ import Index from "./components/Index";
 // Theme
 import { ThemeProvider } from "@mui/material";
 import { themeContext } from "./providers/ThemeProvider";
-// Mui Componenets
+// Providers
+
+import { LanguageProvider } from "./providers/LanguageProvider";
+
 function App() {
   return (
     <>
-      <ThemeProvider theme={themeContext}>
-        <Index />
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider theme={themeContext}>
+          <Index />
+        </ThemeProvider>
+      </LanguageProvider>
     </>
   );
 }
