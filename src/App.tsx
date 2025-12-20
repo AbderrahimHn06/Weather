@@ -5,8 +5,8 @@ import Index from "./components/Index";
 // Theme
 import { ThemeProvider } from "@mui/material";
 import { themeContext } from "./providers/ThemeProvider";
-// Providers
 
+// Providers
 import { LanguageProvider } from "./providers/LanguageProvider";
 
 function App() {

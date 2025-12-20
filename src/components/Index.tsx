@@ -1,15 +1,73 @@
 import { useLanguage } from "../providers/LanguageProvider";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 // Mui
-
 import { Stack, Grid, Typography, Button, IconButton } from "@mui/material";
 import CloudIcon from "@mui/icons-material/Cloud";
 import ReplayIcon from "@mui/icons-material/Replay";
 
-// other
+// ================= Types =================
+type WeatherData = {
+  temp: number;
+  status: string;
+  min: number;
+  max: number;
+  location: string;
+  icon: string;
+};
 
 export default function Index() {
+  const initialData: WeatherData = {
+    temp: 0,
+    status: "waiting",
+    min: 0,
+    max: 0,
+    location: "waiting",
+    icon: "https://www.kindpng.com/picc/m/64-647012_png-example-transparent-png.png",
+  };
+
+  const [data, setData] = useState<WeatherData>(initialData);
+
+  const coord = {
+    lat: 36.4,
+    lon: 6.6,
+  };
+
+  const API_KEY = "f181a3674143297fdb556914376ca6bb";
+
+  const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coord.lat}&lon=${coord.lon}&units=metric&appid=${API_KEY}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    axios
+      .get(apiUrl, {
+        signal: controller.signal,
+      })
+      .then((response) => {
+        const icon = response.data.weather[0].icon;
+        setData({
+          temp: Math.round(response.data.main.temp),
+          status: response.data.weather[0].description,
+          icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
+          min: Math.round(response.data.main.temp_min),
+          max: Math.round(response.data.main.temp_max),
+          location: response.data.name,
+        });
+      })
+      .catch((err) => {
+        if (err.name === "CanceledError") return;
+        console.error("Request Error:", err);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [apiUrl]);
+
   const { language, dispatch } = useLanguage();
+
   const handleLanguageButtonClick = () => {
     dispatch({ type: "setLanguage" });
   };
@@ -17,7 +75,6 @@ export default function Index() {
   return (
     <div className="background" dir={language.direction}>
       {/* Buttons */}
-
       <div className="buttons" dir="rtl">
         <IconButton aria-label="reload">
           <ReplayIcon />
@@ -29,10 +86,9 @@ export default function Index() {
 
       <Stack direction="column" spacing={2} className="weatherCard">
         {/* Heading */}
-
         <Grid container spacing={4}>
           <Grid size={8} className="cityGrid">
-            <h1 className="cityTitle">وهران</h1>
+            <h1 className="cityTitle">{data.location}</h1>
           </Grid>
           <Grid size={4} className="dateGrid">
             <Typography variant="h5" className="dateText">
@@ -45,33 +101,30 @@ export default function Index() {
 
         <div className="weatherCardBody">
           {/* Rhs */}
-
           <Stack className="rhs" direction="column" spacing={2}>
-            {/* degree */}
-
             <div className="degree">
               <Typography variant="h3" className="degreeValue">
-                38°
+                {data.temp}°
               </Typography>
-              <CloudIcon className="degreeIcon" />
+              {/* <CloudIcon className="degreeIcon" /> */}
+              <img src={data.icon} alt="waiting" className="degreeIcon" />
             </div>
-            {/* status */}
 
             <Typography variant="h4" className="weatherStatus">
-              broken clouds
+              {data.status}
             </Typography>
-
-            {/* lines */}
 
             <div
               className="lines"
-              style={language.direction == "rtl" ? { right: 24 } : { left: 24 }}
+              style={
+                language.direction === "rtl" ? { right: 24 } : { left: 24 }
+              }
             >
               <Typography variant="h5" className="line">
-                الصغرى : <span>38</span>
+                الصغرى : <span>{data.min}</span>
               </Typography>
               <Typography variant="h5" className="line">
-                الكبرى : <span>38</span>
+                الكبرى : <span>{data.max}</span>
               </Typography>
             </div>
           </Stack>

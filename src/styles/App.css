@@ -53,7 +53,8 @@
 
 .cityTitle {
   color: rgb(192, 255, 230);
-  font-size: 4rem;
+  font-size: 2rem;
+  width: 100%;
 }
 
 .dateGrid {
