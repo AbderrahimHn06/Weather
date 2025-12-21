@@ -1,5 +1,5 @@
 import { useLanguage } from "../providers/LanguageProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 // MUI
@@ -25,52 +25,54 @@ export default function Index() {
   const { t, i18n } = useTranslation();
   const { language, dispatch } = useLanguage();
 
-  const initialData: WeatherData = {
+  const [data, setData] = useState<WeatherData>({
     temp: 0,
     status: "waiting",
     min: 0,
     max: 0,
-    location: t("common.waiting"),
-    icon: "https://www.kindpng.com/picc/m/64-647012_png-example-transparent-png.png",
-  };
+    location: "waiting",
+    icon: "",
+  });
 
-  const [data, setData] = useState<WeatherData>(initialData);
-
-  const coord = {
-    lat: 36.4,
-    lon: 6.6,
-  };
-
+  const coord = { lat: 36.4, lon: 6.6 };
   const API_KEY = "f181a3674143297fdb556914376ca6bb";
 
   const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coord.lat}&lon=${coord.lon}&units=metric&appid=${API_KEY}`;
 
   const now = moment().format("DD/MM/YYYY");
 
+  // ================= Reusable Request (PURE) =================
+  const fetchWeather = useCallback(
+    async (signal?: AbortSignal): Promise<WeatherData> => {
+      const response = await axios.get(apiUrl, { signal });
+
+      const icon = response.data.weather[0].icon;
+
+      return {
+        temp: Math.round(response.data.main.temp),
+        status: response.data.weather[0].description,
+        min: Math.round(response.data.main.temp_min),
+        max: Math.round(response.data.main.temp_max),
+        location: response.data.name,
+        icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
+      };
+    },
+    [apiUrl]
+  );
+
+  // ================= Initial Load =================
   useEffect(() => {
     const controller = new AbortController();
 
-    axios
-      .get(apiUrl, { signal: controller.signal })
-      .then((response) => {
-        const icon = response.data.weather[0].icon;
-
-        setData({
-          temp: Math.round(response.data.main.temp),
-          status: response.data.weather[0].description,
-          min: Math.round(response.data.main.temp_min),
-          max: Math.round(response.data.main.temp_max),
-          location: response.data.name,
-          icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
-        });
-      })
+    fetchWeather(controller.signal)
+      .then(setData)
       .catch((err) => {
-        if (err.name === "CanceledError") return;
+        if (axios.isCancel(err)) return;
         console.error("Request Error:", err);
       });
 
     return () => controller.abort();
-  }, [apiUrl]);
+  }, [fetchWeather]);
 
   const handleLanguageButtonClick = () => {
     dispatch({ type: "setLanguage" });
@@ -80,10 +82,14 @@ export default function Index() {
   return (
     <div className="background" dir={language.direction}>
       {/* Buttons */}
-      <div className="buttons" dir="rtl">
-        <IconButton aria-label={t("common.reload")}>
+      <div className="buttons">
+        <IconButton
+          aria-label={t("common.reload")}
+          onClick={() => fetchWeather().then(setData)}
+        >
           <ReplayIcon />
         </IconButton>
+
         <Button variant="contained" onClick={handleLanguageButtonClick}>
           {language.name}
         </Button>
@@ -93,8 +99,13 @@ export default function Index() {
         {/* Heading */}
         <Grid container spacing={4}>
           <Grid size={8} className="cityGrid">
-            <h1 className="cityTitle">{data.location}</h1>
+            <h1 className="cityTitle">
+              {data.location === "waiting"
+                ? t("common.waiting")
+                : data.location}
+            </h1>
           </Grid>
+
           <Grid size={4} className="dateGrid">
             <Typography variant="h5" className="dateText">
               {now}
@@ -111,7 +122,9 @@ export default function Index() {
               <Typography variant="h3" className="degreeValue">
                 {data.temp}°
               </Typography>
-              <img src={data.icon} alt="weather" className="degreeIcon" />
+              {data.icon && (
+                <img src={data.icon} alt="weather" className="degreeIcon" />
+              )}
             </div>
 
             <Typography variant="h4" className="weatherStatus">
