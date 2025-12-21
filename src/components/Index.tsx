@@ -2,10 +2,14 @@ import { useLanguage } from "../providers/LanguageProvider";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-// Mui
+// MUI
 import { Stack, Grid, Typography, Button, IconButton } from "@mui/material";
 import CloudIcon from "@mui/icons-material/Cloud";
 import ReplayIcon from "@mui/icons-material/Replay";
+
+// Others
+import moment from "moment";
+import { useTranslation } from "react-i18next";
 
 // ================= Types =================
 type WeatherData = {
@@ -18,12 +22,15 @@ type WeatherData = {
 };
 
 export default function Index() {
+  const { t, i18n } = useTranslation();
+  const { language, dispatch } = useLanguage();
+
   const initialData: WeatherData = {
     temp: 0,
     status: "waiting",
     min: 0,
     max: 0,
-    location: "waiting",
+    location: t("common.waiting"),
     icon: "https://www.kindpng.com/picc/m/64-647012_png-example-transparent-png.png",
   };
 
@@ -38,22 +45,23 @@ export default function Index() {
 
   const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coord.lat}&lon=${coord.lon}&units=metric&appid=${API_KEY}`;
 
+  const now = moment().format("DD/MM/YYYY");
+
   useEffect(() => {
     const controller = new AbortController();
 
     axios
-      .get(apiUrl, {
-        signal: controller.signal,
-      })
+      .get(apiUrl, { signal: controller.signal })
       .then((response) => {
         const icon = response.data.weather[0].icon;
+
         setData({
           temp: Math.round(response.data.main.temp),
           status: response.data.weather[0].description,
-          icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
           min: Math.round(response.data.main.temp_min),
           max: Math.round(response.data.main.temp_max),
           location: response.data.name,
+          icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
         });
       })
       .catch((err) => {
@@ -61,22 +69,19 @@ export default function Index() {
         console.error("Request Error:", err);
       });
 
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [apiUrl]);
-
-  const { language, dispatch } = useLanguage();
 
   const handleLanguageButtonClick = () => {
     dispatch({ type: "setLanguage" });
+    i18n.changeLanguage(language.name === "العربية" ? "en" : "ar");
   };
 
   return (
     <div className="background" dir={language.direction}>
       {/* Buttons */}
       <div className="buttons" dir="rtl">
-        <IconButton aria-label="reload">
+        <IconButton aria-label={t("common.reload")}>
           <ReplayIcon />
         </IconButton>
         <Button variant="contained" onClick={handleLanguageButtonClick}>
@@ -92,7 +97,7 @@ export default function Index() {
           </Grid>
           <Grid size={4} className="dateGrid">
             <Typography variant="h5" className="dateText">
-              17/12/2025
+              {now}
             </Typography>
           </Grid>
         </Grid>
@@ -100,18 +105,19 @@ export default function Index() {
         <hr />
 
         <div className="weatherCardBody">
-          {/* Rhs */}
+          {/* RHS */}
           <Stack className="rhs" direction="column" spacing={2}>
             <div className="degree">
               <Typography variant="h3" className="degreeValue">
                 {data.temp}°
               </Typography>
-              {/* <CloudIcon className="degreeIcon" /> */}
-              <img src={data.icon} alt="waiting" className="degreeIcon" />
+              <img src={data.icon} alt="weather" className="degreeIcon" />
             </div>
 
             <Typography variant="h4" className="weatherStatus">
-              {data.status}
+              {data.status === "waiting"
+                ? t("weather.status.waiting")
+                : data.status}
             </Typography>
 
             <div
@@ -121,15 +127,15 @@ export default function Index() {
               }
             >
               <Typography variant="h5" className="line">
-                الصغرى : <span>{data.min}</span>
+                {t("weather.min")} : <span>{data.min}</span>
               </Typography>
               <Typography variant="h5" className="line">
-                الكبرى : <span>{data.max}</span>
+                {t("weather.max")} : <span>{data.max}</span>
               </Typography>
             </div>
           </Stack>
 
-          {/* Lhs */}
+          {/* LHS */}
           <CloudIcon className="cloudIcon" />
         </div>
       </Stack>

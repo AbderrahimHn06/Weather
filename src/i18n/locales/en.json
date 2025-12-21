@@ -1,0 +1,13 @@
+{
+  "common": {
+    "waiting": "Waiting",
+    "reload": "Reload"
+  },
+  "weather": {
+    "min": "Min",
+    "max": "Max",
+    "status": {
+      "waiting": "Waiting"
+    }
+  }
+}
