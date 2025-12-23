@@ -11,6 +11,10 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import moment from "moment";
 import { useTranslation } from "react-i18next";
 
+// Redux
+import { useSelector, useDispatch } from "react-redux";
+import type { RootState, AppDispatch } from "../store/store";
+
 // ================= Types =================
 type WeatherData = {
   temp: number;
@@ -22,6 +26,9 @@ type WeatherData = {
 };
 
 export default function Index() {
+  const weatherDispatch = useDispatch<AppDispatch>();
+  const weatherData = useSelector((state: RootState) => state.weatherFetch);
+
   const { t, i18n } = useTranslation();
   const { language, dispatch } = useLanguage();
 
