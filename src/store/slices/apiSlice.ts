@@ -56,7 +56,7 @@ const weatherApiSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchWeatherData.fulfilled, (state, action) => {
+      .addCase(fetchWeatherData.fulfilled, (_, action) => {
         return action.payload;
       })
       .addCase(fetchWeatherData.pending, (state) => {
