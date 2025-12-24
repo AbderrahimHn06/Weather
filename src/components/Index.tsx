@@ -1,5 +1,5 @@
 import { useLanguage } from "../providers/LanguageProvider";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import axios from "axios";
 
 // MUI
@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 // Redux
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState, AppDispatch } from "../store/store";
+import { setWeatherData } from "../store/slices/apiSlice";
 
 // ================= Types =================
 type WeatherData = {
@@ -27,19 +28,10 @@ type WeatherData = {
 
 export default function Index() {
   const weatherDispatch = useDispatch<AppDispatch>();
-  const weatherData = useSelector((state: RootState) => state.weatherFetch);
+  const data = useSelector((state: RootState) => state.weatherFetch);
 
   const { t, i18n } = useTranslation();
   const { language, dispatch } = useLanguage();
-
-  const [data, setData] = useState<WeatherData>({
-    temp: 0,
-    status: "waiting",
-    min: 0,
-    max: 0,
-    location: "waiting",
-    icon: "",
-  });
 
   const coord = { lat: 36.4, lon: 6.6 };
   const API_KEY = "f181a3674143297fdb556914376ca6bb";
@@ -48,7 +40,7 @@ export default function Index() {
 
   const now = moment().format("DD/MM/YYYY");
 
-  // ================= Reusable Request (PURE) =================
+  // ================= API REQUEST =================
   const fetchWeather = useCallback(
     async (signal?: AbortSignal): Promise<WeatherData> => {
       const response = await axios.get(apiUrl, { signal });
@@ -67,19 +59,27 @@ export default function Index() {
     [apiUrl]
   );
 
-  // ================= Initial Load =================
+  // ================= INITIAL LOAD =================
   useEffect(() => {
     const controller = new AbortController();
 
     fetchWeather(controller.signal)
-      .then(setData)
+      .then((w) => {
+        weatherDispatch(setWeatherData(w));
+      })
       .catch((err) => {
-        if (axios.isCancel(err)) return;
+        if (err.name === "CanceledError") return;
         console.error("Request Error:", err);
       });
 
     return () => controller.abort();
-  }, [fetchWeather]);
+  }, [fetchWeather, weatherDispatch]);
+
+  const handleReload = () => {
+    fetchWeather().then((w) => {
+      weatherDispatch(setWeatherData(w));
+    });
+  };
 
   const handleLanguageButtonClick = () => {
     dispatch({ type: "setLanguage" });
@@ -89,21 +89,26 @@ export default function Index() {
   return (
     <div className="background" dir={language.direction}>
       {/* Buttons */}
-      <div className="buttons">
+      <div className="buttons" dir="rtl">
         <IconButton
+          className="reloadBtn"
           aria-label={t("common.reload")}
-          onClick={() => fetchWeather().then(setData)}
+          onClick={handleReload}
         >
           <ReplayIcon />
         </IconButton>
 
-        <Button variant="contained" onClick={handleLanguageButtonClick}>
+        <Button
+          className="languageBtn"
+          variant="contained"
+          onClick={handleLanguageButtonClick}
+        >
           {language.name}
         </Button>
       </div>
 
       <Stack direction="column" spacing={2} className="weatherCard">
-        {/* Heading */}
+        {/* Header */}
         <Grid container spacing={4}>
           <Grid size={8} className="cityGrid">
             <h1 className="cityTitle">
@@ -120,7 +125,7 @@ export default function Index() {
           </Grid>
         </Grid>
 
-        <hr />
+        <hr className="divider" />
 
         <div className="weatherCardBody">
           {/* RHS */}
@@ -129,6 +134,7 @@ export default function Index() {
               <Typography variant="h3" className="degreeValue">
                 {data.temp}°
               </Typography>
+
               {data.icon && (
                 <img src={data.icon} alt="weather" className="degreeIcon" />
               )}
@@ -149,6 +155,7 @@ export default function Index() {
               <Typography variant="h5" className="line">
                 {t("weather.min")} : <span>{data.min}</span>
               </Typography>
+
               <Typography variant="h5" className="line">
                 {t("weather.max")} : <span>{data.max}</span>
               </Typography>

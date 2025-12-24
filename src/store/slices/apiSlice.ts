@@ -25,11 +25,16 @@ const weatherApiSlice = createSlice({
   name: "weatherApi",
   initialState: initialState,
   reducers: {
-    firstAction(state, action: PayloadAction<number>) {
-      state.temp = action.payload;
+    setWeatherData(state, action: PayloadAction<WeatherData>) {
+      state.temp = action.payload.temp;
+      state.status = action.payload.status;
+      state.min = action.payload.min;
+      state.max = action.payload.max;
+      state.location = action.payload.location;
+      state.icon = action.payload.icon;
     },
   },
 });
 
 export default weatherApiSlice.reducer;
-export const { firstAction } = weatherApiSlice.actions;
+export const { setWeatherData } = weatherApiSlice.actions;
