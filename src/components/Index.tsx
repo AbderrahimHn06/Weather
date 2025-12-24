@@ -1,11 +1,12 @@
 import { useLanguage } from "../providers/LanguageProvider";
-import { useEffect, useCallback } from "react";
-import axios from "axios";
+import { useEffect } from "react";
 
 // MUI
-import { Stack, Grid, Typography, Button, IconButton } from "@mui/material";
+import { Stack, Typography, Button, IconButton } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import CloudIcon from "@mui/icons-material/Cloud";
 import ReplayIcon from "@mui/icons-material/Replay";
+import LinearProgress from "@mui/material/LinearProgress";
 
 // Others
 import moment from "moment";
@@ -14,72 +15,22 @@ import { useTranslation } from "react-i18next";
 // Redux
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState, AppDispatch } from "../store/store";
-import { setWeatherData } from "../store/slices/apiSlice";
-
-// ================= Types =================
-type WeatherData = {
-  temp: number;
-  status: string;
-  min: number;
-  max: number;
-  location: string;
-  icon: string;
-};
+import { fetchWeatherData, type WeatherData } from "../store/slices/apiSlice";
 
 export default function Index() {
   const weatherDispatch = useDispatch<AppDispatch>();
-  const data = useSelector((state: RootState) => state.weatherFetch);
+  const data: WeatherData = useSelector(
+    (state: RootState) => state.weatherFetch
+  );
 
   const { t, i18n } = useTranslation();
   const { language, dispatch } = useLanguage();
 
-  const coord = { lat: 36.4, lon: 6.6 };
-  const API_KEY = "f181a3674143297fdb556914376ca6bb";
-
-  const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coord.lat}&lon=${coord.lon}&units=metric&appid=${API_KEY}`;
-
   const now = moment().format("DD/MM/YYYY");
 
-  // ================= API REQUEST =================
-  const fetchWeather = useCallback(
-    async (signal?: AbortSignal): Promise<WeatherData> => {
-      const response = await axios.get(apiUrl, { signal });
-
-      const icon = response.data.weather[0].icon;
-
-      return {
-        temp: Math.round(response.data.main.temp),
-        status: response.data.weather[0].description,
-        min: Math.round(response.data.main.temp_min),
-        max: Math.round(response.data.main.temp_max),
-        location: response.data.name,
-        icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
-      };
-    },
-    [apiUrl]
-  );
-
-  // ================= INITIAL LOAD =================
   useEffect(() => {
-    const controller = new AbortController();
-
-    fetchWeather(controller.signal)
-      .then((w) => {
-        weatherDispatch(setWeatherData(w));
-      })
-      .catch((err) => {
-        if (err.name === "CanceledError") return;
-        console.error("Request Error:", err);
-      });
-
-    return () => controller.abort();
-  }, [fetchWeather, weatherDispatch]);
-
-  const handleReload = () => {
-    fetchWeather().then((w) => {
-      weatherDispatch(setWeatherData(w));
-    });
-  };
+    weatherDispatch(fetchWeatherData());
+  }, [weatherDispatch]);
 
   const handleLanguageButtonClick = () => {
     dispatch({ type: "setLanguage" });
@@ -88,81 +39,71 @@ export default function Index() {
 
   return (
     <div className="background" dir={language.direction}>
+      {data.loading && (
+        <LinearProgress
+          sx={{ position: "fixed", top: 0, left: 0, width: "100%" }}
+        />
+      )}
+
       {/* Buttons */}
       <div className="buttons" dir="rtl">
-        <IconButton
-          className="reloadBtn"
-          aria-label={t("common.reload")}
-          onClick={handleReload}
-        >
+        <IconButton onClick={() => weatherDispatch(fetchWeatherData())}>
           <ReplayIcon />
         </IconButton>
 
-        <Button
-          className="languageBtn"
-          variant="contained"
-          onClick={handleLanguageButtonClick}
-        >
+        <Button variant="contained" onClick={handleLanguageButtonClick}>
           {language.name}
         </Button>
       </div>
 
-      <Stack direction="column" spacing={2} className="weatherCard">
+      <Stack className="weatherCard" spacing={3}>
         {/* Header */}
-        <Grid container spacing={4}>
-          <Grid size={8} className="cityGrid">
-            <h1 className="cityTitle">
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Typography className="cityTitle">
               {data.location === "waiting"
                 ? t("common.waiting")
                 : data.location}
-            </h1>
+            </Typography>
           </Grid>
 
-          <Grid size={4} className="dateGrid">
-            <Typography variant="h5" className="dateText">
-              {now}
-            </Typography>
+          <Grid
+            size={{ xs: 12, md: 4 }}
+            sx={{ textAlign: { xs: "left", md: "right" } }}
+          >
+            <Typography className="dateText">{now}</Typography>
           </Grid>
         </Grid>
 
         <hr className="divider" />
 
+        {/* Body */}
         <div className="weatherCardBody">
-          {/* RHS */}
-          <Stack className="rhs" direction="column" spacing={2}>
+          <Stack spacing={2}>
             <div className="degree">
-              <Typography variant="h3" className="degreeValue">
-                {data.temp}°
-              </Typography>
+              <Typography className="degreeValue">{data.temp}°</Typography>
 
               {data.icon && (
                 <img src={data.icon} alt="weather" className="degreeIcon" />
               )}
             </div>
 
-            <Typography variant="h4" className="weatherStatus">
+            <Typography className="weatherStatus">
               {data.status === "waiting"
                 ? t("weather.status.waiting")
                 : data.status}
             </Typography>
 
-            <div
-              className="lines"
-              style={
-                language.direction === "rtl" ? { right: 24 } : { left: 24 }
-              }
-            >
-              <Typography variant="h5" className="line">
-                {t("weather.min")} : <span>{data.min}</span>
+            <div className="lines">
+              <Typography className="line">
+                {t("weather.min")} : {data.min}
               </Typography>
-
-              <Typography variant="h5" className="line">
-                {t("weather.max")} : <span>{data.max}</span>
+              <Typography className="line">
+                {t("weather.max")} : {data.max}
               </Typography>
             </div>
           </Stack>
 
-          {/* LHS */}
           <CloudIcon className="cloudIcon" />
         </div>
       </Stack>

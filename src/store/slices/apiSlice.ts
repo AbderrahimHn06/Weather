@@ -1,13 +1,15 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
 
 // ====== Types ======
-type WeatherData = {
+export type WeatherData = {
   temp: number;
   status: string;
   min: number;
   max: number;
   location: string;
   icon: string;
+  loading: boolean;
 };
 
 // ====== Consts ======
@@ -19,22 +21,48 @@ const initialState: WeatherData = {
   max: 0,
   location: "waiting",
   icon: "",
+  loading: true,
 };
+const coord = { lat: 36.4, lon: 6.6 }; // used on the apiUrl
+const API_KEY = "f181a3674143297fdb556914376ca6bb"; // used on the apiUrl
+
+const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coord.lat}&lon=${coord.lon}&units=metric&appid=${API_KEY}`;
+
+// ====== Async Thunks ======
+export const fetchWeatherData = createAsyncThunk<WeatherData, void>(
+  "weather",
+  async () => {
+    const response = await axios.get(apiUrl);
+
+    const icon = response.data.weather[0].icon;
+    const newData: WeatherData = {
+      temp: Math.round(response.data.main.temp),
+      status: response.data.weather[0].description,
+      min: Math.round(response.data.main.temp_min),
+      max: Math.round(response.data.main.temp_max),
+      location: response.data.name,
+      icon: `https://openweathermap.org/img/wn/${icon}@2x.png`,
+      loading: false,
+    };
+    return newData;
+  }
+);
+
+// ====== Slice ======
 
 const weatherApiSlice = createSlice({
   name: "weatherApi",
-  initialState: initialState,
-  reducers: {
-    setWeatherData(state, action: PayloadAction<WeatherData>) {
-      state.temp = action.payload.temp;
-      state.status = action.payload.status;
-      state.min = action.payload.min;
-      state.max = action.payload.max;
-      state.location = action.payload.location;
-      state.icon = action.payload.icon;
-    },
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchWeatherData.fulfilled, (state, action) => {
+        return action.payload;
+      })
+      .addCase(fetchWeatherData.pending, (state) => {
+        state.loading = true;
+      });
   },
 });
 
 export default weatherApiSlice.reducer;
-export const { setWeatherData } = weatherApiSlice.actions;
